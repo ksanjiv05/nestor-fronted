@@ -1,0 +1,1535 @@
+import React, { useState, useEffect } from "react";
+import Select from "react-select";
+import axios from "axios";
+import DataTable from "react-data-table-component";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllAgent, getAllAgentWithData } from "../../features/agentSlice";
+import { getAllStatus } from "../../features/statusSlice";
+import { toast } from "react-toastify";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+// import ReactHTMLTableToExcel from 'react-html-table-to-excel'; // Import the library
+import { addfollowup, getAllFollowup } from "../../features/followupSlice";
+import { NavLink } from "react-router-dom";
+export const ApprovalTable = ({
+  sendDataToParent,
+  isHotLead = false,
+  dataFromParent,
+  agents,
+}) => {
+  const dispatch = useDispatch();
+  const [leads, setleads] = useState([]);
+  const [status, setstatus] = useState("true");
+  const [search, setsearch] = useState("");
+  const [filterleads, setfilterleads] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [selectedRowIds1, setSelectedRowIds1] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const { agent } = useSelector((state) => state.agent);
+  const { Statusdata } = useSelector((state) => state.StatusData);
+  const apiUrl = process.env.REACT_APP_API_URL;
+  const DBuUrl = process.env.REACT_APP_DB_URL;
+  const baseUrl = process.env.REACT_APP_BASE_URL;
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dataa, setData] = useState({
+    followup_date: new Date(), // Initialize with the current date
+  });
+  // console.log('agentssssssssssss',agents)
+  const handlePageChange = (page) => {
+    setCurrentPage(page); // Update current page state when page changes
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false); // Close the modal
+  };
+
+  const getdatetimeformate = (datetime) => {
+    if (datetime) {
+      const dateObject = new Date(datetime);
+      const formattedDate = `${padZero(dateObject.getDate())}-${padZero(
+        dateObject.getMonth() + 1
+      )}-${dateObject.getFullYear()} ${padZero(
+        dateObject.getHours()
+      )}:${padZero(dateObject.getMinutes())}`;
+      return formattedDate;
+    } else {
+      return " ";
+    }
+  };
+  function padZero(num) {
+    return num < 10 ? `0${num}` : num;
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Prevent default form submission behavior
+
+    // Function to convert local time to UTC by removing the time zone offset
+    // const followupDate = dataa.followup_date;
+    const followupDate = selectedRow?.followup_date;
+    // Check if followupDate is defined and not null
+    if (!followupDate) {
+      toast.warn("Followup date is required");
+      return;
+    }
+
+    // Convert followupDate to ISO string without timezone adjustment
+    const adjustedFollowupDate = new Date(followupDate)
+      .toISOString()
+      .slice(0, 16);
+
+    // Collect form data
+    const updatedLeadData = {
+      lead_id: selectedRow._id,
+      commented_by: selectedRow?.agent_details[0]?._id || "",
+      followup_status_id: selectedRow.status_details[0]?._id || "",
+
+      // Convert followup_date to UTC before submitting
+      followup_date: adjustedFollowupDate,
+
+      followup_won_amount: selectedRow.followup_won_amount || 0,
+      followup_lost_reason_id: selectedRow.followup_lost_reason_id || "",
+      add_to_calender: selectedRow.add_to_calender || false,
+      followup_desc: selectedRow.description || "",
+    };
+
+    console.log("Submitting data:", updatedLeadData);
+
+    try {
+      const response = await dispatch(addfollowup(updatedLeadData));
+      if (response.payload.success) {
+        toast.success(response.payload?.message);
+        // Simulate page refresh effect
+        // handleCloseModal();
+        window.location.reload();
+      } else {
+        toast.warn(response.payload?.message);
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error submitting followup:", error);
+      toast.error("An error occurred while submitting followup");
+    }
+  };
+
+  const quickEditModal = (
+    <div
+      className={`modal fade ${isModalOpen ? "show" : ""}`}
+      style={{ display: isModalOpen ? "block" : "none" }}
+      aria-labelledby="quickEditModalLabel"
+      aria-hidden={!isModalOpen}
+    >
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title" id="quickEditModalLabel">
+              Quick Edit
+            </h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={handleCloseModal}
+            ></button>
+          </div>
+          <div className="modal-body">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label htmlFor="lastComment" className="form-label">
+                  Last Comment
+                </label>
+                <textarea
+                  id="lastComment"
+                  className="form-control"
+                  value={selectedRow?.description || ""}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="mb-3">
+                <label htmlFor="followupDateTime" className="form-label">
+                  Follow-up Date and Time
+                </label>
+                {/* <input
+                  type="datetime-local"
+                  id="followupDateTime"
+                  className="form-control"
+                  value={selectedRow?.followup_date ? formatDateToLocal(selectedRow.followup_date) : ""}
+                  onChange={(e) => setSelectedRow({ ...selectedRow, followup_date: e.target.value })}
+                /> */}
+                <DatePicker
+                  // selected={dataa.followup_date}
+                  // onChange={(date) => setData({ ...selectedRow, followup_date: date })}
+                  selected={
+                    selectedRow?.followup_date
+                      ? new Date(selectedRow.followup_date)
+                      : null
+                  }
+                  onChange={(date) =>
+                    setSelectedRow({ ...selectedRow, followup_date: date })
+                  }
+                  showTimeSelect
+                  timeFormat="hh:mm aa"
+                  timeIntervals={5}
+                  timeCaption="Time"
+                  dateFormat="dd/MM/yyyy h:mm aa" // Custom format: day/month/year and 12-hour time
+                  className="form-control"
+                  placeholderText="Followup date"
+                  name="followup_date"
+                  id="followup_date"
+                />
+              </div>
+
+              <div className="mb-3">
+                <label htmlFor="status" className="form-label">
+                  Change Status
+                </label>
+                <select
+                  id="status"
+                  className="form-control"
+                  value={selectedRow?.status_details[0]?._id || ""}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      status_details: [{ _id: e.target.value }],
+                    })
+                  }
+                >
+                  <option value="">Select Status</option>
+                  {Statusdata &&
+                    Statusdata?.leadstatus?.map((status) => (
+                      <option key={status._id} value={status._id}>
+                        {status.status_name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="modal-footer">
+                <button type="submit" className="btn btn-primary">
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCloseModal}
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const [approv, setapprove] = useState([]);
+  const approval = async () => {
+    let responce = await axios.get(`${apiUrl}/getapproval/`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    setapprove(responce.data);
+    //setfilterleads(responce.data);
+    console.log("jhjhjhjjhjhjhhj", responce.data);
+  };
+  useEffect(() => {
+    approval();
+  }, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // dispatch(getAllAgent());
+        dispatch(getAllStatus());
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const getAllLead1 = async () => {
+    try {
+      const responce = await axios.get(`${apiUrl}/get_All_Lead_Followup`, {
+        headers: {
+          "Content-Type": "application/json",
+          "mongodb-url": DBuUrl,
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+      const leads = responce?.data?.lead;
+      // console.log(leads)
+
+      console.log("++++++++++++++++++lead 1 +++++++++++++++", leads);
+
+      const filteredLeads = responce?.data?.lead?.filter(
+        // (lead) => lead?.type !== "excel"
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name.toLowerCase() === "meeting done"
+      );
+      console.log("+++++++++++====================", filteredLeads);
+      setstatus(responce?.data?.success);
+      setleads(filteredLeads);
+      setfilterleads(filteredLeads);
+    } catch (error) {
+      console.log(error);
+      setfilterleads();
+    }
+  };
+
+  const getAllLead2 = async (assign_to_agent) => {
+    try {
+      const responce = await axios.post(`${apiUrl}/get_Leadby_agentid_status`, {
+        assign_to_agent,
+        headers: {
+          "Content-Type": "application/json",
+          "mongodb-url": DBuUrl,
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+      const filteredLeads = responce?.data?.lead?.filter(
+        // (lead) => lead?.type !== "excel"
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name.toLowerCase() === "meeting done"
+      );
+      if (responce?.data?.success === true) {
+        setstatus(responce?.data?.success);
+        setleads(filteredLeads);
+        setfilterleads(filteredLeads);
+      }
+      if (responce?.data?.success === false) {
+        setstatus(responce?.data?.success);
+        setleads(filteredLeads);
+        setfilterleads(filteredLeads);
+      }
+    } catch (error) {
+      console.log(error);
+      setfilterleads();
+    }
+  };
+
+  /////// For Team Leader
+  const getAllLead3 = async (assign_to_agent) => {
+    try {
+      const responce = await axios.post(
+        `${apiUrl}/getLeadbyTeamLeaderidandwithoutstatus`,
+        {
+          assign_to_agent,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "mongodb-url": DBuUrl,
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
+        }
+      );
+      const filteredLeads = responce?.data?.lead?.filter(
+        // (lead) => lead?.type !== "excel"
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name.toLowerCase() === "meeting done"
+      );
+      if (responce?.data?.success === true) {
+        setleads(filteredLeads);
+        setfilterleads(filteredLeads);
+        return responce?.data?.message;
+      }
+    } catch (error) {
+      console.log(error);
+      setfilterleads();
+    }
+  };
+
+  const getAllLead4 = async (assign_to_agent) => {
+    try {
+      console.log("====================================================");
+      const approvalData = await axios.get(`${apiUrl}/getapproval`, {
+        headers: {
+          "Content-Type": "application/json",
+          "mongodb-url": DBuUrl,
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+      const approvedLeadIds = approvalData.data
+        .filter((approval) => approval.status === "approved")
+        .map((approval) => approval.lead_id);
+      const responce = await axios.post(
+        `${apiUrl}/getLeadbyGroupLeaderidandwithoutstatus`,
+        {
+          assign_to_agent,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "mongodb-url": DBuUrl,
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
+        }
+      );
+
+      console.log("-----------approved ids----------", approvedLeadIds);
+      console.log("++++++++++++++++++++++leads+++++++++++++++", responce.data);
+      const filteredLeads = responce?.data?.lead?.filter(
+        (lead) =>
+          approvedLeadIds.includes(lead._id) &&
+          lead?.status_details[0]?.status_name.toLowerCase() === "meeting done"
+      );
+      console.log("==================done===================", filteredLeads);
+      setstatus(responce?.data?.success);
+      setleads(filteredLeads);
+      setfilterleads(filteredLeads);
+    } catch (error) {
+      console.log(error);
+      setfilterleads();
+    }
+  };
+  useEffect(() => {
+    if (localStorage.getItem("role") === "admin") {
+      getAllLead1();
+      dispatch(getAllAgent());
+    } else if (localStorage.getItem("role") === "TeamLeader") {
+      getAllLead3(localStorage.getItem("user_id"));
+      dispatch(
+        getAllAgentWithData({
+          assign_to_agent: localStorage.getItem("user_id"),
+        })
+      );
+    } else if (localStorage.getItem("role") === "GroupLeader") {
+      getAllLead4(localStorage.getItem("user_id"));
+      dispatch(
+        getAllAgentWithData({
+          assign_to_agent: localStorage.getItem("user_id"),
+        })
+      );
+    } else {
+      getAllLead2(localStorage.getItem("user_id"));
+      dispatch(
+        getAllAgent({ assign_to_agent: localStorage.getItem("user_id") })
+      );
+    }
+
+    dispatch(getAllStatus());
+  }, [localStorage.getItem("user_id")]);
+
+  useEffect(() => {
+    const result = leads.filter((lead) => {
+      return (
+        (lead.full_name &&
+          lead.full_name.toLowerCase().includes(search.toLowerCase())) ||
+        (lead.agent_details &&
+          lead.agent_details[0]?.agent_name &&
+          lead.agent_details[0].agent_name
+            .toLowerCase()
+            .includes(search.toLowerCase())) ||
+        (lead.service_details &&
+          lead.service_details[0]?.product_service_name &&
+          lead.service_details[0].product_service_name
+            .toLowerCase()
+            .includes(search.toLowerCase())) ||
+        (lead.lead_source_details &&
+          lead.lead_source_details[0]?.lead_source_name &&
+          lead.lead_source_details[0].lead_source_name
+            .toLowerCase()
+            .includes(search.toLowerCase())) ||
+        (lead.status_details &&
+          lead.status_details[0]?.status_name &&
+          lead.status_details[0].status_name
+            .toLowerCase()
+            .includes(search.toLowerCase())) ||
+        (lead.contact_no &&
+          lead.contact_no.toLowerCase().includes(search.toLowerCase()))
+      );
+    });
+    setfilterleads(result);
+  }, [search]);
+
+  const isAdmin =
+    localStorage.getItem("role") === "admin" ||
+    localStorage.getItem("role") === "TeamLeader";
+  const isAdmin1 = localStorage.getItem("role") === "admin";
+
+  ////// cleck per page
+  const handleCheckAll = (e) => {
+    e.preventDefault();
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = Math.min(startIndex + rowsPerPage, filterleads.length);
+    const currentPageIds = filterleads
+      .slice(startIndex, endIndex)
+      .map((row) => row._id);
+    const allSelectedOnPage = currentPageIds.every((id) =>
+      selectedRowIds1.includes(id)
+    );
+
+    if (allSelectedOnPage) {
+      setSelectedRowIds1((prevIds) =>
+        prevIds.filter((id) => !currentPageIds.includes(id))
+      );
+    } else {
+      setSelectedRowIds1((prevIds) => [
+        ...new Set([...prevIds, ...currentPageIds]),
+      ]);
+    }
+    sendDataToParent(selectedRowIds1);
+    // console.log('cleck per page select',selectedRowIds1)
+  };
+
+  ////// cleck All page
+  const handleCheckAll1 = (e) => {
+    e.preventDefault();
+    const currentPageIds = filterleads.map((row) => row._id);
+    const allSelectedOnPage = currentPageIds.every((id) =>
+      selectedRowIds1.includes(id)
+    );
+
+    if (allSelectedOnPage) {
+      setSelectedRowIds1((prevIds) =>
+        prevIds.filter((id) => !currentPageIds.includes(id))
+      );
+    } else {
+      setSelectedRowIds1((prevIds) => [
+        ...prevIds,
+        ...currentPageIds.filter((id) => !prevIds.includes(id)),
+      ]);
+    }
+    sendDataToParent(selectedRowIds1);
+    // console.log('cleck All page select',selectedRowIds1)
+  };
+
+  const handleSingleCheck = async (e, row) => {
+    const selectedId = e.target.value;
+    const isChecked = e.target.checked;
+    if (isChecked) {
+      await setSelectedRowIds1((prevIds) => [...prevIds, selectedId]);
+    } else {
+      await setSelectedRowIds1((prevIds) =>
+        prevIds.filter((id) => id !== selectedId)
+      );
+    }
+  };
+
+  useEffect(() => {
+    sendDataToParent(selectedRowIds1);
+  }, [selectedRowIds1]);
+
+  const commonColumns = [
+    {
+      name: "Checkbox",
+      cell: (row, index) => (
+        <>
+          {" "}
+          <input
+            type="checkbox"
+            defaultValue={row._id}
+            checked={selectedRowIds1.includes(row._id)} // ensure checkboxes reflect selection state
+            onChange={(e) => handleSingleCheck(e, row)}
+          />
+        </>
+      ),
+    },
+
+    {
+      name: "Name",
+      cell: (row) => (
+        <a href={`/followupleads/${row?._id}`}>{row?.full_name}</a>
+      ),
+      selector: (row) => row?.full_name,
+      sortable: true,
+    },
+    {
+      name: "Number",
+      selector: (row) => row?.contact_no,
+      sortable: true,
+    },
+    // {
+    //   name: "Lead Source",
+    //   selector: (row) => row?.lead_source_details[0]?.lead_source_name,
+    //   sortable: true,
+    // },
+  ];
+
+  const getStatusBadgeClass = (statusName) => {
+    switch (statusName) {
+      case "Call Back & Hot Lead": {
+        return "bg-danger";
+      }
+      case "Meeting": {
+        return "bg-success";
+      }
+      case "Call Back": {
+        return "bg-warning text-dark";
+      }
+
+      default:
+        return "bg-default"; // Default class for other statuses
+    }
+  };
+  // const [response, setResponse] = useState(null);
+  // const [error, setError] = useState(null);
+
+  // const StartCall = async (mobile, coustmername, agentname, agentid) => {
+  //   let agentNumber;
+
+  //   if (agentid === "660e41a556c9cfebc340c62a") {
+  //     agentNumber = "9315857918"; // Khayati
+  //   } else if (agentid === "660e411856c9cfebc340c5e5") {
+  //     agentNumber = "7669599759"; // Nabya
+  //   } else {
+  //     agentNumber = "7669599759"; // Nabya (default)
+  //   }
+
+  //   let data = JSON.stringify({
+  //     secretKey: "Ha59PMqNZ2JRdChP",
+  //     clientId: "Magiec_C2C",
+  //     agentNumber: `${agentNumber}`,
+  //     customerNumber: `${mobile}`,
+  //     agentName: `${agentname}`,
+  //     customerName: `${coustmername}`,
+  //     calledId: "08037658901",
+  //   });
+
+  //   let config = {
+  //     method: "post",
+  //     maxBodyLength: Infinity,
+  //     url: "https://c2c.ivrobd.com/api/c2c/process",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     data: data,
+  //   };
+
+  //   axios
+  //     .request(config)
+  //     .then((response) => {
+  //       setResponse(response.data);
+  //     })
+  //     .catch((error) => {
+  //       setError(error);
+  //     });
+  // };
+
+  const role = localStorage.getItem("role");
+  const user_id = localStorage.getItem("user_id");
+  const adminColumns = [
+    {
+      name: "Status",
+      selector: (row) => row?.status_details[0]?.status_name,
+
+      sortable: true,
+    },
+    {
+      name: "Followup date",
+      selector: (row) =>
+        row?.followup_date ? (
+          <div style={{ display: "" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
+          ""
+        ),
+      sortable: true,
+    },
+    {
+      name: <div style={{ display: "none" }}>`</div>,
+      selector: (row) => row?.description,
+      sortable: true,
+      cell: (row) => <div style={{ display: "none" }}>{row.description}</div>,
+    },
+
+    {
+      name: <div>Approval by GM</div>,
+      // selector: (row) => row?.approval_status,
+      sortable: true,
+      cell: (row) => {
+        const isApproved = approv.some(
+          (approval) =>
+            approval.lead_id === row?._id &&
+            approval.assign_to_agent === row?.agent_details[0]?._id &&
+            approval.status === "approved" &&
+            approval.role === "GroupLeader"
+          // approval.user_id === user_id
+        );
+
+        return (
+          <button
+            className={`btn btn-${isApproved ? "success" : "danger"}`}
+            disabled
+          >
+            {isApproved ? "Approved" : "Not Approved"}
+          </button>
+        );
+      },
+    },
+    {
+      name: <div>Approval by TL</div>,
+      // selector: (row) => row?.approval_status,
+      sortable: true,
+      cell: (row) => {
+        const isApproved = approv.some(
+          (approval) =>
+            approval.lead_id === row?._id &&
+            approval.assign_to_agent === row?.agent_details[0]?._id &&
+            approval.status === "approved" &&
+            approval.role === "TeamLeader"
+          // approval.user_id === user_id
+        );
+
+        return (
+          <button
+            className={`btn btn-${isApproved ? "success" : "danger"}`}
+            disabled
+          >
+            {isApproved ? "Approved" : "Not Approved"}
+          </button>
+        );
+      },
+    },
+
+    {
+      name: "Action",
+      cell: (row) => (
+        <>
+          <a href={`/followupleads/${row?._id}`}>
+            <button className="btn btn-success btn-sm">
+              <i className="fa fa-pencil-square" aria-hidden="true"></i>
+            </button>
+            <span
+              className={`badge ${getStatusBadgeClass(
+                row?.status_details[0]?.status_name
+              )}`}
+              style={{ marginLeft: "10px" }}
+            >
+              {row?.status_details[0]?.status_name == "Call Back & Hot Lead"
+                ? "Hot"
+                : row?.status_details[0]?.status_name == "Call Back"
+                ? "C"
+                : row?.status_details[0]?.status_name == "Meeting"
+                ? "M"
+                : ""}
+            </span>
+          </a>
+          <NavLink
+            to={`/capturePhoto?lead_id=${row._id}`}
+            className={"btn btn-secondary"}
+            style={{ marginLeft: 10 }}
+          >
+            <i className="fa fa-camera" aria-hidden="true"></i>
+          </NavLink>
+          <a
+            target="_blank"
+            download
+            href={`${baseUrl}/uploads/${row._id}.png`}
+            className={"btn btn-secondary success"}
+            style={{ marginLeft: 10 }}
+          >
+            <i className="fa fa-download" aria-hidden="true"></i>
+          </a>
+
+          {/* <span
+            onClick={() =>
+              StartCall(
+                row?.contact_no,
+                row?.full_name,
+                row?.agent_details[0]?.agent_name,
+                row?.agent_details[0]?._id
+              )
+            }
+            className="btn btn-danger btn-sm"
+          >
+            <i className="fa fa-phone"></i>
+          </span> */}
+        </>
+      ),
+
+      sortable: true,
+    },
+  ];
+  const userColumns = [
+    {
+      name: "Status",
+      selector: (row) => row?.status_details[0]?.status_name,
+      sortable: true,
+    },
+    {
+      name: <div style={{ display: "" }}>Last Comment</div>,
+      selector: (row) => row?.description,
+      sortable: true,
+      cell: (row) => <div style={{ display: "" }}>{row.description}</div>,
+    },
+
+    {
+      name: "Followup date",
+      selector: (row) =>
+        row?.followup_date ? (
+          <div style={{ display: "" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
+          ""
+        ),
+      sortable: true,
+    },
+    {
+      name: "Approval by GM",
+      sortable: true,
+      cell: (row) => {
+        const isApprovedByGM = approv.some(
+          (approval) =>
+            approval.lead_id === row?._id &&
+            approval.assign_to_agent === row?.agent_details[0]?._id &&
+            approval.status === "approved" &&
+            approval.role === "GroupLeader"
+        );
+
+        return (
+          <button
+            className={`btn btn-${isApprovedByGM ? "success" : "danger"}`}
+            disabled
+          >
+            {isApprovedByGM ? "Approved" : "Not Approved"}
+          </button>
+        );
+      },
+    },
+    {
+      name: "Approval by TL",
+      sortable: true,
+      cell: (row) => {
+        const isApprovedByTL = approv.some(
+          (approval) =>
+            approval.lead_id === row?._id &&
+            approval.assign_to_agent === row?.agent_details[0]?._id &&
+            approval.status === "approved" &&
+            approval.role === "TeamLeader"
+        );
+
+        return (
+          <button
+            className={`btn btn-${isApprovedByTL ? "success" : "danger"}`}
+            disabled
+          >
+            {isApprovedByTL ? "Approved" : "Not Approved"}
+          </button>
+        );
+      },
+    },
+
+    {
+      name: "Action",
+      cell: (row) => {
+        const isUserRole = localStorage.getItem("role") === "user";
+        const isApprovedByTL = approv.some(
+          (approval) =>
+            approval.lead_id === row?._id &&
+            approval.assign_to_agent === row?.agent_details[0]?._id &&
+            approval.status === "approved" &&
+            approval.role === "TeamLeader"
+        );
+
+        const actionButtonDisabled = !isApprovedByTL || isUserRole;
+
+        return (
+          <div>
+            <a href={`/followupleads/${row?._id}`}>
+              <button
+                className="btn btn-success"
+                disabled={actionButtonDisabled}
+              >
+                <i className="fa fa-pencil-square" aria-hidden="true"></i>
+              </button>
+              <span
+                className={`badge ${getStatusBadgeClass(
+                  row?.status_details[0]?.status_name
+                )}`}
+                style={{ marginLeft: "10px" }}
+              >
+                {row?.status_details[0]?.status_name === "Call Back & Hot Lead"
+                  ? "Hot"
+                  : row?.status_details[0]?.status_name === "Call Back"
+                  ? "C"
+                  : row?.status_details[0]?.status_name === "Meeting"
+                  ? "M"
+                  : ""}
+              </span>
+            </a>
+          </div>
+        );
+      },
+      sortable: true,
+    },
+  ];
+
+  if (role === "GroupLeader") {
+    userColumns.splice(3, 0, {
+      name: <div style={{ display: "" }}>TeamLeader</div>,
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        if (matchingAgent) {
+          if (matchingAgent.role === "TeamLeader") {
+            return matchingAgent.agent_name;
+          }
+          if (matchingAgent.role === "GroupLeader") {
+            return `${matchingAgent.agent_name} (GM)`;
+          } else if (matchingAgent.role === "user") {
+            return matchingAgent.agent_details.length > 0
+              ? matchingAgent.agent_details[0].agent_name
+              : "";
+          }
+        }
+
+        return "";
+      },
+      sortable: true,
+    });
+
+    userColumns.splice(4, 0, {
+      name: "Agent",
+      // selector: (row) => row?.agent_details[0]?.agent_name,
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        return matchingAgent && matchingAgent.role === "user"
+          ? matchingAgent.agent_name
+          : "";
+      },
+      sortable: true,
+    });
+  }
+
+  if (role === "admin") {
+    adminColumns.splice(1, 0, {
+      name: "GroupLeader",
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        if (matchingAgent) {
+          if (matchingAgent.role === "GroupLeader") {
+            return `${matchingAgent.agent_name}`;
+          }
+          if (matchingAgent.role === "TeamLeader") {
+            return matchingAgent.agent_details.length > 0
+              ? matchingAgent.agent_details[0].agent_name
+              : "";
+          }
+          if (matchingAgent.role === "user") {
+            const userAgentDetails = matchingAgent.agent_details;
+
+            if (userAgentDetails.length > 0) {
+              const teamLeader = agents.find(
+                (agent) =>
+                  agent._id === userAgentDetails[0]._id &&
+                  agent.role === "TeamLeader"
+              );
+              if (teamLeader.role === "TeamLeader") {
+                return teamLeader.agent_details.length > 0
+                  ? teamLeader.agent_details[0].agent_name
+                  : "";
+              }
+            }
+          }
+        }
+
+        return "";
+      },
+      sortable: true,
+    });
+
+    adminColumns.splice(2, 0, {
+      name: "TeamLeader",
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        if (matchingAgent) {
+          if (matchingAgent.role === "TeamLeader") {
+            return matchingAgent.agent_name;
+          }
+          // if (matchingAgent.role === "GroupLeader") {
+          //   return `${matchingAgent.agent_name} (GM)`;
+          // }
+          else if (matchingAgent.role === "user") {
+            return matchingAgent.agent_details.length > 0
+              ? matchingAgent.agent_details[0].agent_name
+              : "";
+          }
+        }
+
+        return "";
+      },
+      sortable: true,
+    });
+
+    adminColumns.splice(3, 0, {
+      name: "Agent",
+      // selector: (row) => row?.agent_details[0]?.agent_name,
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        return matchingAgent && matchingAgent.role === "user"
+          ? matchingAgent.agent_name
+          : "";
+      },
+      sortable: true,
+    });
+  }
+
+  if (role === "TeamLeader") {
+    adminColumns.splice(2, 0, {
+      name: "Agent",
+      selector: (row) => row?.agent_details[0]?.agent_name,
+      sortable: true,
+    });
+  }
+
+  const columns = isAdmin
+    ? [...commonColumns, ...adminColumns]
+    : [...commonColumns, ...userColumns];
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableDataForPDF = filterleads.map((row) =>
+      columns.map((column) => {
+        if (column.selector && typeof column.selector === "function") {
+          return column.selector(row);
+        }
+        return row[column.selector];
+      })
+    );
+    doc.autoTable({
+      head: [columns.map((column) => column.name)],
+      body: tableDataForPDF,
+    });
+    doc.save("table.pdf");
+  };
+
+  const customStyles = {
+    cells: {
+      style: {
+        border: "0px solid #ddd", // Set the cell border
+        fontSize: "14px",
+        // background: "#f4f3fe",
+      },
+    },
+    headCells: {
+      style: {
+        border: "0px solid #111", // Set the header cell border
+        fontSize: "14px",
+        background: "#f0f0f0",
+      },
+    },
+    rows: {
+      style: {
+        background: "#fdf1f1", // Set the default background color
+      },
+    },
+    highlightOnHover: {
+      style: {
+        background: "#f4f3fe", // Set the background color on hover
+      },
+    },
+    striped: {
+      style: {
+        background: "#f8f9fa", // Set the background color for striped rows
+      },
+    },
+    // Hide the Last Comment column
+    // rows: {
+    //   style: {
+    //     display: "none",
+    //   },
+    // },
+  };
+
+  const handleSelectedRowsChange = ({ selectedRows }) => {
+    let selectedIds = selectedRows.map((row) => row._id);
+    setSelectedRowIds(selectedIds);
+    sendDataToParent(selectedIds);
+  };
+
+  const [adSerch, setAdvanceSerch] = useState([]);
+
+  const DeleteSelected = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete?");
+
+    if (confirmDelete) {
+      const aaaaa = { ids: selectedRowIds1 };
+
+      fetch(`${apiUrl}/BulkDeleteLead`, {
+        method: "delete",
+        headers: {
+          "Content-Type": "application/json",
+          "mongodb-url": DBuUrl,
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: JSON.stringify(aaaaa),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data?.success == true) {
+            toast.success(data?.message);
+            setTimeout(() => {
+              window.location.reload(false);
+            }, 500);
+          } else {
+            toast.warn(data?.message);
+          }
+        })
+        .catch((error) => {
+          console.error("Fetch error:", error);
+        });
+      console.log("Item deleted!");
+    } else {
+      toast.success("Delete canceled");
+      console.log("Delete canceled");
+    }
+  };
+
+  const AdvanceSerch = async (e) => {
+    e.preventDefault();
+    const updatedata = {
+      ...adSerch,
+      user_id: localStorage.getItem("user_id"),
+      role: localStorage.getItem("role"),
+    };
+    fetch(`${apiUrl}/getAdvanceFillter`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "mongodb-url": DBuUrl,
+        Authorization: "Bearer " + localStorage.getItem("token"),
+      },
+      body: JSON.stringify(updatedata),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Response from server:", data);
+        setstatus(data?.success);
+        setleads(data?.lead);
+        setfilterleads(data?.lead);
+      })
+      .catch((error) => {
+        console.error("Fetch error:", error);
+        // Handle errors
+      });
+  };
+
+  const exportToExcel = () => {
+    const columnsForExport = columns
+      .filter((column) => column.name !== "Checkbox") // Remove the Checkbox column
+      .map((column) => ({
+        title: column.name === "" ? "Description" : column.name, // Change [object Object] to Description
+        dataIndex: column.selector,
+      }));
+
+    const dataForExport = filterleads.map((row) =>
+      columns
+        .filter((column) => column.name !== "Checkbox") // Remove the Checkbox column
+        .map((column) => {
+          if (column.selector && typeof column.selector === "function") {
+            return column.selector(row);
+          }
+          return row[column.selector];
+        })
+    );
+
+    const exportData = [
+      columnsForExport.map((col) => col.title),
+      ...dataForExport,
+    ];
+    const blob = new Blob(
+      [exportData.map((row) => row.join("\t")).join("\n")],
+      {
+        type: "application/vnd.ms-excel",
+      }
+    );
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "table.xls";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const Refresh = () => {
+    setTimeout(() => {
+      window.location.reload(false);
+    }, 500);
+  };
+  const getrowperpage = async (e) => {
+    const newValue = e.target.value;
+    setRowsPerPage(newValue);
+  };
+
+  const filtersiteleads = filterleads.filter((row) => {
+    const isApprovedByGM = approv.some(
+      (approval) =>
+        approval.lead_id === row._id &&
+        approval.assign_to_agent === row.agent_details[0]?._id &&
+        approval.status === "approved" &&
+        approval.role === "GroupLeader"
+    );
+    const isApprovedByTL = approv.some(
+      (approval) =>
+        approval.lead_id === row._id &&
+        approval.assign_to_agent === row.agent_details[0]?._id &&
+        approval.status === "approved" &&
+        approval.role === "TeamLeader"
+    );
+    return isApprovedByGM && isApprovedByTL;
+  });
+  const exportSitevisit = () => {
+    const doc = new jsPDF();
+
+    const filteredUserColumns = userColumns.filter(
+      (column) => column.name !== "Action"
+    );
+    const selectedAdminColumns = adminColumns
+      .filter((column) => {
+        return (
+          column.name === "GroupLeader" ||
+          column.name === "TeamLeader" ||
+          column.name === "Agent"
+        );
+      })
+      .filter((column) => column.name !== "Action");
+
+    const columnOrder = [...filteredUserColumns, ...selectedAdminColumns];
+
+    const mergedColumnNames = [
+      "S.No",
+      ...columnOrder.map((column) =>
+        typeof column.name === "string"
+          ? column.name
+          : column.name.props
+          ? column.name.props.children
+          : "Unknown Column"
+      ),
+    ];
+
+    const tableDataForPDF = filtersiteleads.map((row, index) => {
+      const userColumnData = filteredUserColumns.map((column) => {
+        if (column.name === "Followup date") {
+          return row?.followup_date
+            ? getdatetimeformate(row?.followup_date)
+            : "";
+        }
+        if (column.name === "Approval by GM") {
+          const isApprovedByGM = approv.some(
+            (approval) =>
+              approval.lead_id === row?._id &&
+              approval.assign_to_agent === row?.agent_details[0]?._id &&
+              approval.status === "approved" &&
+              approval.role === "GroupLeader"
+          );
+          return isApprovedByGM ? "Approved" : "Not Approved";
+        }
+
+        if (column.name === "Approval by TL") {
+          const isApprovedByTL = approv.some(
+            (approval) =>
+              approval.lead_id === row?._id &&
+              approval.assign_to_agent === row?.agent_details[0]?._id &&
+              approval.status === "approved" &&
+              approval.role === "TeamLeader"
+          );
+          return isApprovedByTL ? "Approved" : "Not Approved";
+        }
+        if (column.selector && typeof column.selector === "function") {
+          const value = column.selector(row);
+          return typeof value === "object" ? JSON.stringify(value) : value;
+        }
+        return row[column.selector];
+      });
+
+      const adminColumnData = selectedAdminColumns.map((column) => {
+        if (column.selector && typeof column.selector === "function") {
+          const value = column.selector(row);
+          return typeof value === "object" ? JSON.stringify(value) : value;
+        }
+        return row[column.selector];
+      });
+
+      return [index + 1, ...userColumnData, ...adminColumnData];
+    });
+
+    // Add a total row at the end of the table
+    const totalRow = [
+      "Total", // The first column ("S.No")
+      ...new Array(mergedColumnNames.length - 1).fill(""), // Fill empty columns
+    ];
+    totalRow[1] = `Total Visits: ${filtersiteleads.length}`; // Add total downloads info in the second column
+
+    // Append the total row to the table data
+    tableDataForPDF.push(totalRow);
+
+    // Generate the table
+    doc.autoTable({
+      head: [mergedColumnNames],
+      body: tableDataForPDF,
+    });
+
+    // Save the generated PDF
+    doc.save("sitevisit.pdf");
+  };
+
+  return (
+    <div>
+      <div
+        className="row justify-content-md-center"
+        style={{ display: dataFromParent }}
+      >
+        <div className="col-md-12 advS">
+          <form onSubmit={AdvanceSerch}>
+            <div className="advfilter-wrap-box">
+              <div className="row justify-content-md-center">
+                <div className="col-md-3 ">
+                  <div className="form-group">
+                    <select
+                      className="form-control"
+                      onChange={(e) =>
+                        setAdvanceSerch({ ...adSerch, Status: e.target.value })
+                      }
+                      name="Status"
+                    >
+                      <option>Status</option>
+                      {Statusdata?.leadstatus?.map((status, key) => {
+                        return (
+                          <option value={status._id}>
+                            {status.status_name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="form-group">
+                    <select
+                      className="form-control"
+                      onChange={(e) =>
+                        setAdvanceSerch({ ...adSerch, agent: e.target.value })
+                      }
+                      name="agent"
+                    >
+                      <option>Agent</option>
+                      {/* <option value="Unassigne">Unassigned Agent</option> */}
+                      {agent?.agent?.map((agents, key) => {
+                        return (
+                          <option value={agents._id}>
+                            {agents.agent_name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="form-group">
+                    <input
+                      type="date"
+                      placeholder="Date To"
+                      className="form-control"
+                      onChange={(e) =>
+                        setAdvanceSerch({
+                          ...adSerch,
+                          startDate: e.target.value,
+                        })
+                      }
+                      name="startDate"
+                    />
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="form-group">
+                    <input
+                      type="date"
+                      placeholder="Date Till"
+                      onChange={(e) =>
+                        setAdvanceSerch({ ...adSerch, endDate: e.target.value })
+                      }
+                      className="form-control"
+                      name="endDate"
+                    />
+                  </div>
+                </div>
+
+                <div className="col-md-3">
+                  <div className="form-group">
+                    <button type="submit" className="btn-advf-sub">
+                      Submit
+                    </button>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="form-group">
+                    <button onClick={Refresh} className="btn-advf-refresh">
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-md-12">
+          <div className="export-wrap">
+            {isAdmin1 ? (
+              <>
+                <button className="btn-ecport-pdf" onClick={exportSitevisit}>
+                  Site visit report
+                </button>
+                <button className="btn-ecport-pdf" onClick={exportToPDF}>
+                  Export PDF
+                </button>
+                <button className="btn-ecport-xls" onClick={exportToExcel}>
+                  Export Excel
+                </button>
+                <button className="btn-ecport-del" onClick={DeleteSelected}>
+                  Delete
+                </button>{" "}
+              </>
+            ) : (
+              <></>
+            )}
+          </div>
+        </div>
+      </div>
+      {quickEditModal}
+
+      {status === false ? (
+        <table
+          id="example"
+          className="table table-striped pt-3"
+          style={{ width: "100%" }}
+        >
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Number</th>
+              <th>Agent</th>
+              <th>Service</th>
+              <th>Lead Source</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <p className="text-center">No Followup leads Founds</p>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <>
+          {isAdmin1 ? (
+            <>
+              <button className="btn-sel-all" onClick={handleCheckAll1}>
+                Select All
+              </button>
+              <button className="btn-sel-one" onClick={handleCheckAll}>
+                Select Per Page
+              </button>
+              <span class="btn btn-sm shadow_btn">Rows per page:</span>
+              <select
+                className="btn btn-sm shadow_btn  "
+                value={rowsPerPage}
+                onChange={getrowperpage}
+              >
+                <option value="10">10</option>
+
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </>
+          ) : (
+            <>
+              {" "}
+              <button className="btn-sel-all" onClick={handleCheckAll1}>
+                Select All
+              </button>
+              <button className="btn-sel-one" onClick={handleCheckAll}>
+                Select Per Page
+              </button>
+              <span class="btn btn-sm shadow_btn">Rows per page:</span>
+              <select
+                className="btn btn-sm shadow_btn  "
+                value={rowsPerPage}
+                onChange={getrowperpage}
+              >
+                <option value="10">10</option>
+
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </>
+          )}
+          <div>
+            <DataTable
+              key={rowsPerPage} // Add key prop to force re-render when rowsPerPage changes
+              responsive
+              id="table-to-export"
+              columns={columns}
+              data={filterleads}
+              pagination
+              paginationPerPage={rowsPerPage}
+              fixedHeader
+              fixedHeaderScrollHeight="550px"
+              // selectableRows="single"
+              highlightOnHover
+              subHeader
+              subHeaderComponent={
+                <input
+                  type="text"
+                  placeholder="Search here"
+                  value={search}
+                  onChange={(e) => setsearch(e.target.value)}
+                  className="form-control w-25"
+                />
+              }
+              onSelectedRowsChange={handleSelectedRowsChange}
+              customStyles={customStyles}
+              selectedRows={selectedRowIds}
+              onChangePage={handlePageChange}
+              striped
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
