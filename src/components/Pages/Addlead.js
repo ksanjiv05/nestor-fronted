@@ -75,7 +75,7 @@ function Addlead() {
         toast.success(aaaa.payload.message);
         if (buttonValue === "save") {
           // navigate("/leads");
-          navigate("/Followupleads");
+          navigate("/newlead");
         }
       } else {
         toast.warn(aaaa.payload?.message);
@@ -91,7 +91,8 @@ function Addlead() {
         toast.success(aaaa.payload.message);
         if (buttonValue === "save") {
           // navigate("/leads");
-          navigate("/Followupleads");
+          // navigate("/Followupleads");
+          navigate("/newlead");
         }
       } else {
         toast.warn(aaaa.payload?.message);

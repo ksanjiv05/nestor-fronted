@@ -13,6 +13,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 // import ReactHTMLTableToExcel from 'react-html-table-to-excel'; // Import the library
 import { addfollowup, getAllFollowup } from "../../features/followupSlice";
+import moment from "moment";
 export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
   const dispatch = useDispatch();
   const [leads, setleads] = useState([]);
@@ -27,8 +28,8 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
   const { Statusdata } = useSelector((state) => state.StatusData);
   const apiUrl = process.env.REACT_APP_API_URL;
   const DBuUrl = process.env.REACT_APP_DB_URL;
-  const [selectedRow, setSelectedRow] = useState(null); 
-  const [isModalOpen, setIsModalOpen] = useState(false); 
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [dataa, setData] = useState({
     followup_date: new Date(), // Initialize with the current date
   });
@@ -39,7 +40,7 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
     setSelectedRow(row); // Set the row data
     setIsModalOpen(true); // Open the modal
   };
-  
+
   // Function to handle modal close
   const handleCloseModal = () => {
     setIsModalOpen(false); // Close the modal
@@ -67,7 +68,7 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission behavior
-  
+
     // Function to convert local time to UTC by removing the time zone offset
     // const followupDate = dataa.followup_date;
     const followupDate = selectedRow?.followup_date;
@@ -76,36 +77,36 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
       toast.warn("Followup date is required");
       return;
     }
-  
+
     // Convert followupDate to ISO string without timezone adjustment
-    const adjustedFollowupDate = new Date(followupDate).toISOString().slice(0, 16);
-  
-  
+    const adjustedFollowupDate = new Date(followupDate)
+      .toISOString()
+      .slice(0, 16);
+
     // Collect form data
     const updatedLeadData = {
       lead_id: selectedRow._id,
-      commented_by: selectedRow?.agent_details[0]?._id || '',
-      followup_status_id: selectedRow.status_details[0]?._id || '',
-      
+      commented_by: selectedRow?.agent_details[0]?._id || "",
+      followup_status_id: selectedRow.status_details[0]?._id || "",
+
       // Convert followup_date to UTC before submitting
-      followup_date: adjustedFollowupDate ,
-      
+      followup_date: adjustedFollowupDate,
+
       followup_won_amount: selectedRow.followup_won_amount || 0,
-      followup_lost_reason_id: selectedRow.followup_lost_reason_id || '',
+      followup_lost_reason_id: selectedRow.followup_lost_reason_id || "",
       add_to_calender: selectedRow.add_to_calender || false,
-      followup_desc: selectedRow.description || '',
+      followup_desc: selectedRow.description || "",
     };
-  
+
     console.log("Submitting data:", updatedLeadData);
-  
+
     try {
       const response = await dispatch(addfollowup(updatedLeadData));
       if (response.payload.success) {
         toast.success(response.payload?.message);
         // Simulate page refresh effect
-        // handleCloseModal(); 
+        // handleCloseModal();
         window.location.reload();
-        
       } else {
         toast.warn(response.payload?.message);
         window.location.reload();
@@ -119,49 +120,61 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? null : date;
   };
-  
+
   const formatDateToLocal = (dateString) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      return ''; // Return an empty string if the date is invalid
+      return ""; // Return an empty string if the date is invalid
     }
-  
+
     // Format the date to "YYYY-MM-DDTHH:MM" format for datetime-local input
     const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60000));
+    const localDate = new Date(date.getTime() - offset * 60000);
     return localDate.toISOString().slice(0, 16); // Remove the seconds and milliseconds
   };
 
-
-
-
   const quickEditModal = (
     <div
-      className={`modal fade ${isModalOpen ? 'show' : ''}`}
-      style={{ display: isModalOpen ? 'block' : 'none' }}
+      className={`modal fade ${isModalOpen ? "show" : ""}`}
+      style={{ display: isModalOpen ? "block" : "none" }}
       aria-labelledby="quickEditModalLabel"
       aria-hidden={!isModalOpen}
     >
       <div className="modal-dialog">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title" id="quickEditModalLabel">Quick Edit</h5>
-            <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+            <h5 className="modal-title" id="quickEditModalLabel">
+              Quick Edit
+            </h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={handleCloseModal}
+            ></button>
           </div>
           <div className="modal-body">
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label htmlFor="lastComment" className="form-label">Last Comment</label>
+                <label htmlFor="lastComment" className="form-label">
+                  Last Comment
+                </label>
                 <textarea
                   id="lastComment"
                   className="form-control"
                   value={selectedRow?.description || ""}
-                  onChange={(e) => setSelectedRow({ ...selectedRow, description: e.target.value })}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
-             
+
               <div className="mb-3">
-                <label htmlFor="followupDateTime" className="form-label">Follow-up Date and Time</label>
+                <label htmlFor="followupDateTime" className="form-label">
+                  Follow-up Date and Time
+                </label>
                 {/* <input
                   type="datetime-local"
                   id="followupDateTime"
@@ -169,30 +182,43 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
                   value={selectedRow?.followup_date ? formatDateToLocal(selectedRow.followup_date) : ""}
                   onChange={(e) => setSelectedRow({ ...selectedRow, followup_date: e.target.value })}
                 /> */}
-                 <DatePicker
-                      // selected={dataa.followup_date}
-                      // onChange={(date) => setData({ ...selectedRow, followup_date: date })}
-                      selected={selectedRow?.followup_date ? new Date(selectedRow.followup_date) : null}
-                      onChange={(date) => setSelectedRow({ ...selectedRow, followup_date: date })}
-                      showTimeSelect
-                      timeFormat="hh:mm aa"
-                      timeIntervals={5}
-                      timeCaption="Time"
-                      dateFormat="dd/MM/yyyy h:mm aa" // Custom format: day/month/year and 12-hour time
-                      className="form-control"
-                      placeholderText="Followup date"
-                      name="followup_date"
-                      id="followup_date"
-                    />
+                <DatePicker
+                  // selected={dataa.followup_date}
+                  // onChange={(date) => setData({ ...selectedRow, followup_date: date })}
+                  selected={
+                    selectedRow?.followup_date
+                      ? new Date(selectedRow.followup_date)
+                      : null
+                  }
+                  onChange={(date) =>
+                    setSelectedRow({ ...selectedRow, followup_date: date })
+                  }
+                  showTimeSelect
+                  timeFormat="hh:mm aa"
+                  timeIntervals={5}
+                  timeCaption="Time"
+                  dateFormat="dd/MM/yyyy h:mm aa" // Custom format: day/month/year and 12-hour time
+                  className="form-control"
+                  placeholderText="Followup date"
+                  name="followup_date"
+                  id="followup_date"
+                />
               </div>
-  
+
               <div className="mb-3">
-                <label htmlFor="status" className="form-label">Change Status</label>
+                <label htmlFor="status" className="form-label">
+                  Change Status
+                </label>
                 <select
                   id="status"
                   className="form-control"
                   value={selectedRow?.status_details[0]?._id || ""}
-                  onChange={(e) => setSelectedRow({ ...selectedRow, status_details: [{ _id: e.target.value }] })}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      status_details: [{ _id: e.target.value }],
+                    })
+                  }
                 >
                   <option value="">Select Status</option>
                   {Statusdata.leadstatus?.map((status) => (
@@ -202,10 +228,18 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
                   ))}
                 </select>
               </div>
-  
+
               <div className="modal-footer">
-                <button type="submit" className="btn btn-primary">Submit</button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Close</button>
+                <button type="submit" className="btn btn-primary">
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCloseModal}
+                >
+                  Close
+                </button>
               </div>
             </form>
           </div>
@@ -360,8 +394,7 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
           assign_to_agent: localStorage.getItem("user_id"),
         })
       );
-    } 
-    else {
+    } else {
       getAllLead2(localStorage.getItem("user_id"));
       dispatch(
         getAllAgent({ assign_to_agent: localStorage.getItem("user_id") })
@@ -509,6 +542,12 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
       selector: (row) => row?.lead_source_details[0]?.lead_source_name,
       sortable: true,
     },
+    {
+      name: "Date",
+      selector: (row) => row?.created, // row?.followup_date,
+      cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
+      sortable: true,
+    },
   ];
 
   const getStatusBadgeClass = (statusName) => {
@@ -553,22 +592,24 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
     },
     {
       name: "Quick Edit",
-      cell: (row) => <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>,
+      cell: (row) => (
+        <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>
+      ),
     },
 
-     
     {
       // name: "Followup date",
       name: <div style={{ display: "none" }}>Followup date</div>,
       selector: (row) =>
-        row?.followup_date
-          ? (<div style={{display:"none"}} >{getdatetimeformate(row?.followup_date)}</div>) 
-          
+        row?.followup_date ? (
+          <div style={{ display: "none" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
           //  row?.followup_date && format(new Date(datafomate(row?.followup_date)), 'dd/MM/yy hh:mm:ss')
-            
-          : (
-            ""
-          ),
+
+          ""
+        ),
       sortable: true,
     },
     {
@@ -618,22 +659,24 @@ export const Importedleadstable = ({ sendDataToParent, dataFromParent }) => {
     },
     {
       name: "Quick Edit",
-      cell: (row) => <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>,
+      cell: (row) => (
+        <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>
+      ),
     },
 
-     
     {
       // name: "Followup date",
       name: <div style={{ display: "none" }}>Followup date</div>,
       selector: (row) =>
-        row?.followup_date
-          ? (<div style={{display:"none"}} >{getdatetimeformate(row?.followup_date)}</div>) 
-          
+        row?.followup_date ? (
+          <div style={{ display: "none" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
           //  row?.followup_date && format(new Date(datafomate(row?.followup_date)), 'dd/MM/yy hh:mm:ss')
-            
-          : (
-            ""
-          ),
+
+          ""
+        ),
       sortable: true,
     },
     {

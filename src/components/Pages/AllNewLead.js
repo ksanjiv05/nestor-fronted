@@ -13,6 +13,7 @@ import { addlead } from "../../features/leadSlice";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addfollowup, getAllFollowup } from "../../features/followupSlice";
+import moment from "moment/moment";
 const disposition = [
   "Not Interested",
   "Interested",
@@ -625,6 +626,12 @@ export const AllNewLead = ({ sendDataToParent, dataFromParent }) => {
     //   sortable: true,
     // },
     {
+      name: "Date",
+      selector: (row) => row?.created, // row?.followup_date,
+      cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
+      sortable: true,
+    },
+    {
       name: "Quick Edit",
       cell: (row) => (
         <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>
@@ -715,6 +722,11 @@ export const AllNewLead = ({ sendDataToParent, dataFromParent }) => {
     //     </div>
     //   ),
     // },
+    {
+      name: "Date",
+      selector: (row) => moment(row?.followup_date).format("DD-MM-YYYY"), // row?.followup_date,
+      sortable: true,
+    },
 
     {
       name: "Quick Edit",
