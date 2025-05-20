@@ -12,6 +12,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 // import ReactHTMLTableToExcel from 'react-html-table-to-excel'; // Import the library
 import { addfollowup, getAllFollowup } from "../../features/followupSlice";
+import moment from "moment";
 export const HotLeadtable = ({
   sendDataToParent,
   isHotLead = false,
@@ -31,8 +32,8 @@ export const HotLeadtable = ({
   const { Statusdata } = useSelector((state) => state.StatusData);
   const apiUrl = process.env.REACT_APP_API_URL;
   const DBuUrl = process.env.REACT_APP_DB_URL;
-  const [selectedRow, setSelectedRow] = useState(null); 
-  const [isModalOpen, setIsModalOpen] = useState(false); 
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [dataa, setData] = useState({
     followup_date: new Date(), // Initialize with the current date
   });
@@ -69,86 +70,101 @@ export const HotLeadtable = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const followupDate = selectedRow?.followup_date;
-    
+
     if (!followupDate) {
-        toast.warn("Followup date is required");
-        return;
+      toast.warn("Followup date is required");
+      return;
     }
 
     // Custom format function to preserve exact date and time
     const formatDate = (date) => {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
     const updatedLeadData = {
-        lead_id: selectedRow._id,
-        commented_by: selectedRow?.agent_details[0]?._id || '',
-        followup_status_id: selectedRow.status_details[0]?._id || '',
-        followup_date: formatDate(followupDate), // Use the custom format function
-        followup_won_amount: selectedRow.followup_won_amount || 0,
-        followup_lost_reason_id: selectedRow.followup_lost_reason_id || '',
-        add_to_calender: selectedRow.add_to_calender || false,
-        followup_desc: selectedRow.description || '',
+      lead_id: selectedRow._id,
+      commented_by: selectedRow?.agent_details[0]?._id || "",
+      followup_status_id: selectedRow.status_details[0]?._id || "",
+      followup_date: formatDate(followupDate), // Use the custom format function
+      followup_won_amount: selectedRow.followup_won_amount || 0,
+      followup_lost_reason_id: selectedRow.followup_lost_reason_id || "",
+      add_to_calender: selectedRow.add_to_calender || false,
+      followup_desc: selectedRow.description || "",
     };
 
     console.log("Submitting data:", updatedLeadData);
 
     try {
-        const response = await dispatch(addfollowup(updatedLeadData));
-        if (response.payload.success) {
-            toast.success(response.payload?.message);
-            window.location.reload();
-        } else {
-            toast.warn(response.payload?.message);
-            window.location.reload();
-        }
+      const response = await dispatch(addfollowup(updatedLeadData));
+      if (response.payload.success) {
+        toast.success(response.payload?.message);
+        window.location.reload();
+      } else {
+        toast.warn(response.payload?.message);
+        window.location.reload();
+      }
     } catch (error) {
-        console.error("Error submitting followup:", error);
-        toast.error("An error occurred while submitting followup");
+      console.error("Error submitting followup:", error);
+      toast.error("An error occurred while submitting followup");
     }
-};
+  };
 
   const parseDate = (dateString) => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? null : date;
   };
-  
+
   const quickEditModal = (
     <div
-      className={`modal fade ${isModalOpen ? 'show' : ''}`}
-      style={{ display: isModalOpen ? 'block' : 'none' }}
+      className={`modal fade ${isModalOpen ? "show" : ""}`}
+      style={{ display: isModalOpen ? "block" : "none" }}
       aria-labelledby="quickEditModalLabel"
       aria-hidden={!isModalOpen}
     >
       <div className="modal-dialog">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title" id="quickEditModalLabel">Quick Edit</h5>
-            <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+            <h5 className="modal-title" id="quickEditModalLabel">
+              Quick Edit
+            </h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={handleCloseModal}
+            ></button>
           </div>
           <div className="modal-body">
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label htmlFor="lastComment" className="form-label">Last Comment</label>
+                <label htmlFor="lastComment" className="form-label">
+                  Last Comment
+                </label>
                 <textarea
                   id="lastComment"
                   className="form-control"
                   value={selectedRow?.description || ""}
-                  onChange={(e) => setSelectedRow({ ...selectedRow, description: e.target.value })}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
-             
+
               <div className="mb-3">
-                <label htmlFor="followupDateTime" className="form-label">Follow-up Date and Time</label>
+                <label htmlFor="followupDateTime" className="form-label">
+                  Follow-up Date and Time
+                </label>
                 {/* <input
                   type="datetime-local"
                   id="followupDateTime"
@@ -156,30 +172,43 @@ export const HotLeadtable = ({
                   value={selectedRow?.followup_date ? formatDateToLocal(selectedRow.followup_date) : ""}
                   onChange={(e) => setSelectedRow({ ...selectedRow, followup_date: e.target.value })}
                 /> */}
-                 <DatePicker
-                      // selected={dataa.followup_date}
-                      // onChange={(date) => setData({ ...selectedRow, followup_date: date })}
-                      selected={selectedRow?.followup_date ? new Date(selectedRow.followup_date) : null}
-                      onChange={(date) => setSelectedRow({ ...selectedRow, followup_date: date })}
-                      showTimeSelect
-                      timeFormat="hh:mm aa"
-                      timeIntervals={5}
-                      timeCaption="Time"
-                      dateFormat="dd/MM/yyyy h:mm aa" // Custom format: day/month/year and 12-hour time
-                      className="form-control"
-                      placeholderText="Followup date"
-                      name="followup_date"
-                      id="followup_date"
-                    />
+                <DatePicker
+                  // selected={dataa.followup_date}
+                  // onChange={(date) => setData({ ...selectedRow, followup_date: date })}
+                  selected={
+                    selectedRow?.followup_date
+                      ? new Date(selectedRow.followup_date)
+                      : null
+                  }
+                  onChange={(date) =>
+                    setSelectedRow({ ...selectedRow, followup_date: date })
+                  }
+                  showTimeSelect
+                  timeFormat="hh:mm aa"
+                  timeIntervals={5}
+                  timeCaption="Time"
+                  dateFormat="dd/MM/yyyy h:mm aa" // Custom format: day/month/year and 12-hour time
+                  className="form-control"
+                  placeholderText="Followup date"
+                  name="followup_date"
+                  id="followup_date"
+                />
               </div>
-  
+
               <div className="mb-3">
-                <label htmlFor="status" className="form-label">Change Status</label>
+                <label htmlFor="status" className="form-label">
+                  Change Status
+                </label>
                 <select
                   id="status"
                   className="form-control"
                   value={selectedRow?.status_details[0]?._id || ""}
-                  onChange={(e) => setSelectedRow({ ...selectedRow, status_details: [{ _id: e.target.value }] })}
+                  onChange={(e) =>
+                    setSelectedRow({
+                      ...selectedRow,
+                      status_details: [{ _id: e.target.value }],
+                    })
+                  }
                 >
                   <option value="">Select Status</option>
                   {Statusdata.leadstatus?.map((status) => (
@@ -189,10 +218,18 @@ export const HotLeadtable = ({
                   ))}
                 </select>
               </div>
-  
+
               <div className="modal-footer">
-                <button type="submit" className="btn btn-primary">Submit</button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Close</button>
+                <button type="submit" className="btn btn-primary">
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCloseModal}
+                >
+                  Close
+                </button>
               </div>
             </form>
           </div>
@@ -200,7 +237,6 @@ export const HotLeadtable = ({
       </div>
     </div>
   );
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -249,9 +285,9 @@ export const HotLeadtable = ({
 
       const filteredLeads = responce?.data?.lead?.filter(
         // (lead) => lead?.type !== "excel"
-        (lead) => lead?.type !== "excel" && 
-                  (
-                   lead?.status_details[0]?.status_name === "Meeting")
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name === "Meeting"
       );
 
       setstatus(responce?.data?.success);
@@ -275,9 +311,9 @@ export const HotLeadtable = ({
       });
       const filteredLeads = responce?.data?.lead?.filter(
         // (lead) => lead?.type !== "excel"
-        (lead) => lead?.type !== "excel" && 
-                  (
-                   lead?.status_details[0]?.status_name === "Meeting")
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name === "Meeting"
       );
       if (responce?.data?.success === true) {
         setstatus(responce?.data?.success);
@@ -313,9 +349,9 @@ export const HotLeadtable = ({
       );
       const filteredLeads = responce?.data?.lead?.filter(
         // (lead) => lead?.type !== "excel"
-        (lead) => lead?.type !== "excel" && 
-                  (
-                   lead?.status_details[0]?.status_name === "Meeting")
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name === "Meeting"
       );
       if (responce?.data?.success === true) {
         setleads(filteredLeads);
@@ -328,7 +364,7 @@ export const HotLeadtable = ({
     }
   };
 
-  /// group leader 
+  /// group leader
   const getAllLead4 = async (assign_to_agent) => {
     try {
       const responce = await axios.post(
@@ -347,11 +383,10 @@ export const HotLeadtable = ({
 
       const filteredLeads = responce?.data?.lead?.filter(
         // (lead) => lead?.type !== "excel"
-        (lead) => lead?.type !== "excel" && 
-                  (
-                   lead?.status_details[0]?.status_name === "Meeting")
+        (lead) =>
+          lead?.type !== "excel" &&
+          lead?.status_details[0]?.status_name === "Meeting"
       );
-   
 
       if (responce?.data?.success === true) {
         setleads(filteredLeads);
@@ -382,8 +417,7 @@ export const HotLeadtable = ({
           assign_to_agent: localStorage.getItem("user_id"),
         })
       );
-    } 
-    else {
+    } else {
       getAllLead2(localStorage.getItem("user_id"));
       dispatch(
         getAllAgent({ assign_to_agent: localStorage.getItem("user_id") })
@@ -392,7 +426,6 @@ export const HotLeadtable = ({
 
     dispatch(getAllStatus());
   }, [localStorage.getItem("user_id")]);
-
 
   useEffect(() => {
     const result = leads.filter((lead) => {
@@ -528,6 +561,12 @@ export const HotLeadtable = ({
       selector: (row) => row?.lead_source_details[0]?.lead_source_name,
       sortable: true,
     },
+    {
+      name: "Date",
+      selector: (row) => row?.created, // row?.followup_date,
+      cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
+      sortable: true,
+    },
   ];
 
   const getStatusBadgeClass = (statusName) => {
@@ -616,22 +655,24 @@ export const HotLeadtable = ({
 
     {
       name: "Quick Edit",
-      cell: (row) => <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>,
+      cell: (row) => (
+        <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>
+      ),
     },
 
-     
     {
       // name: "Followup date",
       name: <div style={{ display: "none" }}>Followup date</div>,
       selector: (row) =>
-        row?.followup_date
-          ? (<div style={{display:"none"}} >{getdatetimeformate(row?.followup_date)}</div>) 
-          
+        row?.followup_date ? (
+          <div style={{ display: "none" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
           //  row?.followup_date && format(new Date(datafomate(row?.followup_date)), 'dd/MM/yy hh:mm:ss')
-            
-          : (
-            ""
-          ),
+
+          ""
+        ),
       sortable: true,
     },
     {
@@ -678,7 +719,7 @@ export const HotLeadtable = ({
   ];
   const role = localStorage.getItem("role");
   // const aaaa =agents.map((ag)=>)
-  console.log('aaaa',agents)
+  console.log("aaaa", agents);
 
   const userColumns = [
     {
@@ -697,25 +738,27 @@ export const HotLeadtable = ({
       sortable: true,
       cell: (row) => <div style={{ display: "" }}>{row.description}</div>,
     },
-    
+
     {
       name: "Quick Edit",
-      cell: (row) => <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>,
+      cell: (row) => (
+        <button onClick={() => handleQuickEdit(row)}>Quick Edit</button>
+      ),
     },
 
-     
     {
       // name: "Followup date",
       name: <div style={{ display: "none" }}>Followup date</div>,
       selector: (row) =>
-        row?.followup_date
-          ? (<div style={{display:"none"}} >{getdatetimeformate(row?.followup_date)}</div>) 
-          
+        row?.followup_date ? (
+          <div style={{ display: "none" }}>
+            {getdatetimeformate(row?.followup_date)}
+          </div>
+        ) : (
           //  row?.followup_date && format(new Date(datafomate(row?.followup_date)), 'dd/MM/yy hh:mm:ss')
-            
-          : (
-            ""
-          ),
+
+          ""
+        ),
       sortable: true,
     },
     {
@@ -760,58 +803,56 @@ export const HotLeadtable = ({
     },
   ];
   if (role === "GroupLeader") {
-    
     userColumns.splice(3, 0, {
-      name:<div style={{ display: "" }}>TeamLeader</div>,
+      name: <div style={{ display: "" }}>TeamLeader</div>,
       selector: (row) => {
-       
-        const matchingAgent = agents.find((agent) => agent._id === row?.agent_details[0]?._id);
-    
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
         if (matchingAgent) {
-          
           if (matchingAgent.role === "TeamLeader") {
             return matchingAgent.agent_name;
           }
           if (matchingAgent.role === "GroupLeader") {
-            return `${matchingAgent.agent_name} (GM)`; 
-          }
-          
-          else if (matchingAgent.role === "user") {
-            return matchingAgent.agent_details.length > 0 
-            ? matchingAgent.agent_details[0].agent_name 
-            : "";
+            return `${matchingAgent.agent_name} (GM)`;
+          } else if (matchingAgent.role === "user") {
+            return matchingAgent.agent_details.length > 0
+              ? matchingAgent.agent_details[0].agent_name
+              : "";
           }
         }
-  
-  
+
         return "";
       },
       sortable: true,
     });
-    
-  userColumns.splice(4, 0, {
-    name: "Agent",
-    // selector: (row) => row?.agent_details[0]?.agent_name,
-    selector: (row) => {
-    
-      const matchingAgent = agents.find((agent) => agent._id === row?.agent_details[0]?._id);
 
-      return matchingAgent && matchingAgent.role === "user" ? matchingAgent.agent_name : "";
-    },
-    sortable: true,
-  });
+    userColumns.splice(4, 0, {
+      name: "Agent",
+      // selector: (row) => row?.agent_details[0]?.agent_name,
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        return matchingAgent && matchingAgent.role === "user"
+          ? matchingAgent.agent_name
+          : "";
+      },
+      sortable: true,
+    });
   }
 
   if (role === "admin") {
-    
-
     adminColumns.splice(2, 0, {
       name: <div style={{ display: "" }}>GroupLeader</div>,
       selector: (row) => {
-        const matchingAgent = agents.find((agent) => agent._id === row?.agent_details[0]?._id);
-    
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
         if (matchingAgent) {
-         
           if (matchingAgent.role === "GroupLeader") {
             return `${matchingAgent.agent_name}`;
           }
@@ -822,64 +863,67 @@ export const HotLeadtable = ({
           }
           if (matchingAgent.role === "user") {
             const userAgentDetails = matchingAgent.agent_details;
-    
+
             if (userAgentDetails.length > 0) {
               const teamLeader = agents.find(
-                (agent) => agent._id === userAgentDetails[0]._id && agent.role === "TeamLeader"
+                (agent) =>
+                  agent._id === userAgentDetails[0]._id &&
+                  agent.role === "TeamLeader"
               );
               if (teamLeader.role === "TeamLeader") {
-                return teamLeader.agent_details.length > 0 
-                ? teamLeader.agent_details[0].agent_name 
-                : "";
+                return teamLeader.agent_details.length > 0
+                  ? teamLeader.agent_details[0].agent_name
+                  : "";
               }
             }
           }
         }
-    
+
         return "";
       },
       sortable: true,
     });
-    
+
     adminColumns.splice(3, 0, {
-      name:<div style={{ display: "" }}>TeamLeader</div>,
+      name: <div style={{ display: "" }}>TeamLeader</div>,
       selector: (row) => {
-       
-        const matchingAgent = agents.find((agent) => agent._id === row?.agent_details[0]?._id);
-    
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
         if (matchingAgent) {
-          
           if (matchingAgent.role === "TeamLeader") {
             return matchingAgent.agent_name;
           }
           // if (matchingAgent.role === "GroupLeader") {
-          //   return `${matchingAgent.agent_name} (GM)`; 
+          //   return `${matchingAgent.agent_name} (GM)`;
           // }
-          
           else if (matchingAgent.role === "user") {
-            return matchingAgent.agent_details.length > 0 
-            ? matchingAgent.agent_details[0].agent_name 
-            : "";
+            return matchingAgent.agent_details.length > 0
+              ? matchingAgent.agent_details[0].agent_name
+              : "";
           }
         }
-  
-  
+
         return "";
       },
       sortable: true,
     });
-    
-  adminColumns.splice(4, 0, {
-    name: "Agent",
-    // selector: (row) => row?.agent_details[0]?.agent_name,
-    selector: (row) => {
-    
-      const matchingAgent = agents.find((agent) => agent._id === row?.agent_details[0]?._id);
 
-      return matchingAgent && matchingAgent.role === "user" ? matchingAgent.agent_name : "";
-    },
-    sortable: true,
-  });
+    adminColumns.splice(4, 0, {
+      name: "Agent",
+      // selector: (row) => row?.agent_details[0]?.agent_name,
+      selector: (row) => {
+        const matchingAgent = agents.find(
+          (agent) => agent._id === row?.agent_details[0]?._id
+        );
+
+        return matchingAgent && matchingAgent.role === "user"
+          ? matchingAgent.agent_name
+          : "";
+      },
+      sortable: true,
+    });
   }
 
   if (role === "TeamLeader") {
@@ -889,7 +933,7 @@ export const HotLeadtable = ({
       sortable: true,
     });
   }
-  
+
   const columns = isAdmin
     ? [...commonColumns, ...adminColumns]
     : [...commonColumns, ...userColumns];

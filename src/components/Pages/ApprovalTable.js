@@ -13,6 +13,7 @@ import "react-datepicker/dist/react-datepicker.css";
 // import ReactHTMLTableToExcel from 'react-html-table-to-excel'; // Import the library
 import { addfollowup, getAllFollowup } from "../../features/followupSlice";
 import { NavLink } from "react-router-dom";
+import moment from "moment";
 export const ApprovalTable = ({
   sendDataToParent,
   isHotLead = false,
@@ -551,6 +552,12 @@ export const ApprovalTable = ({
     {
       name: "Number",
       selector: (row) => row?.contact_no,
+      sortable: true,
+    },
+    {
+      name: "Date",
+      selector: (row) => row?.created, // row?.followup_date,
+      cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
       sortable: true,
     },
     // {

@@ -16,6 +16,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 // import ReactHTMLTableToExcel from 'react-html-table-to-excel'; // Import the library
 import { addfollowup, getAllFollowup } from "../../features/followupSlice";
+import moment from "moment";
 export default function AllFollowupstable({
   sendDataToParent,
   dataFromParent,
@@ -645,6 +646,12 @@ export default function AllFollowupstable({
           style={{ fontSize: 25, color: "yellowgreen" }}
         ></i>
       ),
+    },
+    {
+      name: "Date",
+      selector: (row) => row?.created, // row?.followup_date,
+      cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
+      sortable: true,
     },
     // {
     //   name: "Lead Source",
