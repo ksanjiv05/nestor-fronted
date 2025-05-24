@@ -45,14 +45,14 @@ export const Allleadstable = ({
   };
 
   const handleQuickEdit = (row) => {
-    if (!currentCallingLead) {
-      toast.warn("please call first");
-      return;
-    }
-    if (currentCallingLead._id != row._id) {
-      toast.warn("edit is allowed in which you have called");
-      return;
-    }
+    // if (!currentCallingLead) {
+    //   toast.warn("please call first");
+    //   return;
+    // }
+    // if (currentCallingLead._id != row._id) {
+    //   toast.warn("edit is allowed in which you have called");
+    //   return;
+    // }
     setSelectedRow(row); // Set the row data
     setIsModalOpen(true); // Open the modal
   };

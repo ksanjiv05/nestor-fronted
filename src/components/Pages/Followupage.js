@@ -308,10 +308,10 @@ export default function Followupage() {
     // const followupDate = followupDate.followup_date;
     const followupDateValue = followupDate;
     // Check if followupDate is defined and not null
-    if (!followupDateValue) {
-      toast.warn("Followup date is required");
-      return;
-    }
+    // if (!followupDateValue) {
+    //   toast.warn("Followup date is required");
+    //   return;
+    // }
 
     // Convert followupDate to ISO string without timezone adjustment
     const adjustedFollowupDate = new Date(followupDateValue)
@@ -415,10 +415,10 @@ export default function Followupage() {
     const role = localStorage.getItem("role");
     const user_id = localStorage.getItem("user_id");
 
-    if (!followupDate) {
-      toast.warn("Followup date is required");
-      return;
-    }
+    // if (!followupDate) {
+    //   toast.warn("Followup date is required");
+    //   return;
+    // }
 
     // Format the date correctly without timezone adjustment
     const formatDate = (date) => {

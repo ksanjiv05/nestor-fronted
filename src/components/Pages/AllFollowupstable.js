@@ -56,14 +56,14 @@ export default function AllFollowupstable({
   };
 
   const handleQuickEdit = (row) => {
-    if (!currentCallingLead) {
-      toast.warn("please call first");
-      return;
-    }
-    if (currentCallingLead._id != row._id) {
-      toast.warn("edit is allowed in which you have called");
-      return;
-    }
+    // if (!currentCallingLead) {
+    //   toast.warn("please call first");
+    //   return;
+    // }
+    // if (currentCallingLead._id != row._id) {
+    //   toast.warn("edit is allowed in which you have called");
+    //   return;
+    // }
     setSelectedRow(row); // Set the row data
     setIsModalOpen(true); // Open the modal
   };
@@ -653,11 +653,11 @@ export default function AllFollowupstable({
       cell: (row) => moment(row?.created).format("DD/MM/YYYY"),
       sortable: true,
     },
-    // {
-    //   name: "Lead Source",
-    //   selector: (row) => row?.lead_source_details[0]?.lead_source_name,
-    //   sortable: true,
-    //  },
+    {
+      name: "Comment",
+      selector: (row) => row?.description,
+      sortable: true,
+    },
   ];
   const handleCalling = async (data) => {
     try {

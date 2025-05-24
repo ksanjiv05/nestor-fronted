@@ -65,15 +65,15 @@ export const AllNewLead = ({ sendDataToParent, dataFromParent }) => {
     return num < 10 ? `0${num}` : num;
   }
   const handleQuickEdit = (row) => {
-    console.log("currentcallinlead", currentCallingLead, row);
-    if (!currentCallingLead) {
-      toast.warn("please call first");
-      return;
-    }
-    if (currentCallingLead._id != row._id) {
-      toast.warn("edit is allowed in which you have called");
-      return;
-    }
+    // console.log("currentcallinlead", currentCallingLead, row);
+    // if (!currentCallingLead) {
+    //   toast.warn("please call first");
+    //   return;
+    // }
+    // if (currentCallingLead._id != row._id) {
+    //   toast.warn("edit is allowed in which you have called");
+    //   return;
+    // }
     setSelectedRow(row); // Set the row data
     setIsModalOpen(true); // Open the modal
   };
